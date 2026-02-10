@@ -3,10 +3,17 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+
 type Teacher = { _id: string; name: string };
 type Student = { _id: string; name: string; nis: string };
 
-export default function SuperAdminClient() {
+
+interface SuperadminClientProps {
+  classes: any; // bisa diganti tipe yang lebih spesifik
+}
+
+
+export default function SuperadminClient({ classes }: SuperadminClientProps) {
   const [role, setRole] = useState("ADMIN");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
