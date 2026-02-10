@@ -6,11 +6,11 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "seed:admin": "node --loader ts-node/esm scripts/seed-admin.ts"
+    "lint": "eslint"
+    
   },
   "dependencies": {
-    "@prisma/client": "^7.3.0",
+  
     "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
     "framer-motion": "^12.29.2",
@@ -32,8 +32,6 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
   }
+
 }
