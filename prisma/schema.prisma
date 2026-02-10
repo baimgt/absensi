@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "mongodb"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  WALI_KELAS
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(WALI_KELAS)
+  createdAt DateTime @default(now())
+}
+
+model AcademicYear {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  label     String   // "2024/2025"
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Semester {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  label     String   // "Ganjil" / "Genap"
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Teacher {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  createdAt DateTime @default(now())
+
+  classesAsWali ClassRoom[] @relation("WaliKelasRelation")
+}
+
+model ClassRoom {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  waliKelasId   String?  @db.ObjectId
+  waliKelas     Teacher? @relation("WaliKelasRelation", fields: [waliKelasId], references: [id])
+
+  academicYear  String
+  semester      String
+  createdAt     DateTime @default(now())
+
+  students      Student[]
+}
+
+
+
+model Student {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  nis       String   @unique
+  name      String
+  classId   String   @db.ObjectId
+  classRoom ClassRoom @relation(fields: [classId], references: [id])
+  createdAt DateTime @default(now())
+
+  attendances Attendance[]
+}
+
+model Attendance {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId String   @db.ObjectId
+  student   Student  @relation(fields: [studentId], references: [id])
+
+  date      DateTime
+  status    String   // "HADIR" | "SAKIT" | "IZIN" | "ALPA"
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+  @@index([status])
+}
