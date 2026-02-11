@@ -10,7 +10,7 @@ function toObjId(v: string) {
 }
 
 export async function getAllowedClassIds(session: SessionUser) {
-  if (session.role === "admin") return null; // null = all
+  if (session.role === "ADMIN") return null; // null = all
 
   const db = await getDb();
   const uid = toObjId(session.id);
