@@ -20,6 +20,7 @@ export default async function SiswaPerKelasPage({
   const classId = id;
 
   const db = await getDb();
+  
 
   // ambil kelas (aman)
   const kelas = isValidObjectId(classId)

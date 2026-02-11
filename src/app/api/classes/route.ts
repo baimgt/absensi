@@ -10,13 +10,13 @@ export async function GET() {
     .aggregate([
       { $sort: { createdAt: -1 } },
       {
-        $lookup: {
-          from: "teachers",
-          localField: "waliKelasId",
-          foreignField: "_id",
-          as: "wali",
-        },
-      },
+  $lookup: {
+    from: "users", // 🔥 BUKAN teachers
+    localField: "waliKelasId",
+    foreignField: "_id",
+    as: "wali",
+  },
+},
       { $unwind: { path: "$wali", preserveNullAndEmptyArrays: true } },
       {
         $project: {

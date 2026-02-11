@@ -20,7 +20,7 @@ export default function WaliKelasClient({
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"ADD" | "EDIT">("ADD");
   const [loading, setLoading] = useState(false);
-
+  const [password, setPassword] = useState("");
   const [formId, setFormId] = useState("");
   const [name, setName] = useState("");
   const [nip, setNip] = useState("");
@@ -38,14 +38,15 @@ export default function WaliKelasClient({
     setTeachers(data);
   }
 
-  function openAdd() {
-    setMode("ADD");
-    setFormId("");
-    setName("");
-    setNip("");
-    setPhone("");
-    setOpen(true);
-  }
+ function openAdd() {
+  setMode("ADD");
+  setFormId("");
+  setName("");
+  setNip("");
+  setPhone("");
+  setPassword("");
+  setOpen(true);
+}
 
   function openEdit(t: TeacherRow) {
     setMode("EDIT");
@@ -65,7 +66,7 @@ export default function WaliKelasClient({
         await fetch("/api/teachers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, nip, phone }),
+          body: JSON.stringify({ name, nip, phone, password }),
         });
       } else {
         await fetch("/api/teachers", {
@@ -188,6 +189,17 @@ export default function WaliKelasClient({
               autoFocus
             />
           </div>
+
+          <div>
+  <label className={labelCls}>Password Login</label>
+  <input
+    type="password"
+    className={inputCls}
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    placeholder="Password untuk login wali"
+  />
+</div>
 
           <div>
             <label className={labelCls}>NIP (opsional)</label>

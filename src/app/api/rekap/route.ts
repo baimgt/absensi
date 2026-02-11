@@ -10,46 +10,45 @@ function toId(v: string) {
 }
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const classId = String(searchParams.get("classId") ?? "").trim();
-  const start = String(searchParams.get("start") ?? "").trim(); // YYYY-MM-DD
-  const end = String(searchParams.get("end") ?? "").trim();     // YYYY-MM-DD
+  const role = req.headers.get("x-user-role");
+  const classIdFromJWT = req.headers.get("x-user-classid");
+  const userId = req.headers.get("x-user-id");
+  
 
-  if (!classId) {
-    return NextResponse.json({ message: "classId wajib" }, { status: 400 });
-  }
+  const { searchParams } = new URL(req.url);
+  let classIdQuery = searchParams.get("classId")?.trim() || "";
 
   const db = await getDb();
+  let classId: string | null = null;
 
-  // match date range (kalau kosong -> semua)
+  if (role === "WALI") classId = classIdFromJWT!;
+  else if (role === "SISWA") classId = null;
+  else classId = classIdQuery || null;
+
   const dateFilter: any = {};
+  const start = searchParams.get("start");
+  const end = searchParams.get("end");
   if (start) dateFilter.$gte = start;
   if (end) dateFilter.$lte = end;
 
-  const match: any = {
-    $or: [{ classId: toId(classId) }, { classId: String(classId) }],
-  };
+  const match: any = {};
+  if (classId) match.classId = new ObjectId(classId);
   if (start || end) match.date = dateFilter;
+  if (role === "SISWA") match.studentId = new ObjectId(userId!);
 
   const rows = await db.collection("attendance").aggregate([
     { $match: match },
-
-    // samakan studentId jadi string biar aman (ObjectId/string)
     { $addFields: { studentIdStr: { $toString: "$studentId" } } },
-
-    // hitung per status
     {
       $group: {
         _id: "$studentIdStr",
         hadir: { $sum: { $cond: [{ $eq: ["$status", "HADIR"] }, 1, 0] } },
         sakit: { $sum: { $cond: [{ $eq: ["$status", "SAKIT"] }, 1, 0] } },
-        izin:  { $sum: { $cond: [{ $eq: ["$status", "IZIN"] }, 1, 0] } },
-        alpa:  { $sum: { $cond: [{ $eq: ["$status", "ALPA"] }, 1, 0] } },
+        izin: { $sum: { $cond: [{ $eq: ["$status", "IZIN"] }, 1, 0] } },
+        alpa: { $sum: { $cond: [{ $eq: ["$status", "ALPA"] }, 1, 0] } },
         total: { $sum: 1 },
       },
     },
-
-    // convert _id string -> ObjectId jika valid
     {
       $addFields: {
         studentObjId: {
@@ -61,8 +60,6 @@ export async function GET(req: Request) {
         },
       },
     },
-
-    // join students
     {
       $lookup: {
         from: "students",
@@ -72,8 +69,6 @@ export async function GET(req: Request) {
       },
     },
     { $unwind: { path: "$student", preserveNullAndEmptyArrays: true } },
-
-    // output rapi
     {
       $project: {
         _id: 0,
@@ -87,7 +82,6 @@ export async function GET(req: Request) {
         total: 1,
       },
     },
-
     { $sort: { name: 1 } },
   ]).toArray();
 

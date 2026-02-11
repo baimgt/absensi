@@ -1,10 +1,7 @@
 import KehadiranSiswaClient from "./KehadiranSiswaClient";
 import { getDb } from "@/lib/mongo";
+import { getSession } from "@/lib/auth";
 import { ObjectId } from "mongodb";
-
-function isValidObjectId(v: string) {
-  return /^[a-fA-F0-9]{24}$/.test(v);
-}
 
 function todayWitaYYYYMMDD() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -22,16 +19,60 @@ function todayWitaYYYYMMDD() {
 
 export default async function KehadiranSiswaPage() {
   const db = await getDb();
+  const user = await getSession();
+  if (!user) throw new Error("Unauthorized");
+
   const date = todayWitaYYYYMMDD();
 
-  const classesRaw = await db.collection("classes").find({}).sort({ createdAt: -1 }).toArray();
+  let classMatch: any = {};
+  let studentMatch: any = {};
+  let attendanceMatch: any = { date };
+
+  // ======================
+  // ROLE: WALI
+  // ======================
+  if (user.role === "WALI") {
+    const waliClasses = await db
+      .collection("classes")
+      .find({ waliKelasId: new ObjectId(user.id) })
+      .project({ _id: 1 })
+      .toArray();
+
+    const classIds = waliClasses.map((c) => c._id);
+
+    classMatch = { _id: { $in: classIds } };
+    studentMatch = { classId: { $in: classIds } };
+    attendanceMatch.classId = { $in: classIds };
+  }
+
+  // ======================
+  // ROLE: SISWA
+  // ======================
+  if (user.role === "SISWA") {
+    const student = await db.collection("students").findOne({
+      userId: new ObjectId(user.id),
+    });
+
+    if (!student) throw new Error("Student not found");
+
+    studentMatch = { _id: student._id };
+    attendanceMatch.studentId = String(student._id);
+    classMatch = { _id: student.classId };
+  }
+
+  // ======================
+  // CLASSES
+  // ======================
+  const classesRaw = await db.collection("classes").find(classMatch).toArray();
   const classes = classesRaw.map((c: any) => ({
     id: String(c._id),
     name: String(c.name ?? ""),
   }));
 
-  // ambil siswa (minimal)
-  const studentsRaw = await db.collection("students").find({}).sort({ createdAt: -1 }).toArray();
+  // ======================
+  // STUDENTS
+  // ======================
+  const studentsRaw = await db.collection("students").find(studentMatch).toArray();
   const students = studentsRaw.map((s: any) => ({
     id: String(s._id),
     nis: String(s.nis ?? ""),
@@ -39,8 +80,14 @@ export default async function KehadiranSiswaPage() {
     classId: s.classId ? String(s.classId) : "",
   }));
 
-  // ambil attendance hari ini
-  const attRaw = await db.collection("attendance").find({ date }).toArray();
+  // ======================
+  // ATTENDANCE
+  // ======================
+  const attRaw = await db
+    .collection("attendance")
+    .find(attendanceMatch)
+    .toArray();
+
   const attendance = attRaw.map((a: any) => ({
     id: String(a._id),
     date: String(a.date),

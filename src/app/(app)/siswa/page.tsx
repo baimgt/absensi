@@ -1,4 +1,6 @@
 import { getDb } from "@/lib/mongo";
+import { getSession } from "@/lib/auth";
+import { ObjectId } from "mongodb";
 
 type ClassRow = {
   id: string;
@@ -15,23 +17,51 @@ type StudentRow = {
 
 export default async function SiswaPage() {
   const db = await getDb();
+  const user = await getSession();
 
+  if (!user) throw new Error("Unauthorized");
+  if (user.role === "SISWA") throw new Error("Forbidden");
+
+  // ==========================
+  // FILTER BERDASARKAN ROLE
+  // ==========================
+  let studentMatch: any = {};
+  let classMatch: any = {};
+
+  if (user.role === "WALI") {
+    const waliClasses = await db
+      .collection("classes")
+      .find({ waliKelasId: new ObjectId(user.id) })
+      .project({ _id: 1 })
+      .toArray();
+
+    const classIds = waliClasses.map((c) => c._id);
+
+    studentMatch = { classId: { $in: classIds } };
+    classMatch = { _id: { $in: classIds } };
+  }
+
+  // ==========================
+  // CLASSES (UNTUK DROPDOWN)
+  // ==========================
   const classesRaw = await db
     .collection("classes")
-    .find({})
+    .find(classMatch)
     .sort({ createdAt: 1 })
     .toArray();
 
   const classes: ClassRow[] = classesRaw.map((c: any) => ({
     id: String(c._id),
-    name: c.name ?? "-",
+    name: String(c.name ?? "-"),
   }));
 
-  // join students -> class name
+  // ==========================
+  // STUDENTS + JOIN CLASS
+  // ==========================
   const studentsAgg = await db
     .collection("students")
     .aggregate([
-      { $sort: { createdAt: -1 } },
+      { $match: studentMatch },
       {
         $lookup: {
           from: "classes",
@@ -50,6 +80,7 @@ export default async function SiswaPage() {
           className: { $ifNull: ["$class.name", "-"] },
         },
       },
+      { $sort: { createdAt: -1 } },
     ])
     .toArray();
 
@@ -63,5 +94,10 @@ export default async function SiswaPage() {
 
   const SiswaClient = (await import("./SiswaClient")).default;
 
-  return <SiswaClient initialClasses={classes} initialStudents={students} />;
+  return (
+    <SiswaClient
+      initialClasses={classes}
+      initialStudents={students}
+    />
+  );
 }

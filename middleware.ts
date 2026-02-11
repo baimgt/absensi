@@ -1,30 +1,31 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
-export function middleware(req: NextRequest) {
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
+
+export async function middleware(req: NextRequest) {
   const token = req.cookies.get("session")?.value;
 
-  const isAuthPage = req.nextUrl.pathname.startsWith("/login");
-
-  if (!token && !isAuthPage) {
+  if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (token && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    // @ts-ignore
+    req.headers.set("x-user-role", payload.role);
+    // @ts-ignore
+    req.headers.set("x-user-id", payload.id);
+    // @ts-ignore
+    req.headers.set("x-user-classid", payload.classId || "");
+    return NextResponse.next();
+  } catch (err) {
+    console.error("JWT verify error:", err);
+    return NextResponse.redirect(new URL("/login", req.url));
   }
-
-  return NextResponse.next();
 }
 
+// middleware berlaku untuk semua halaman, kecuali login
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/kelas/:path*",
-    "/siswa/:path*",
-    "/kehadiran/:path*",
-    "/rekap-absen/:path*",
-    "/laporan/:path*",
-    "/login",
-  ],
+  matcher: ["/((?!login).*)"], 
 };

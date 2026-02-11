@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/mongo";
 import { ObjectId } from "mongodb";
 import KelasClient from "./KelasClient";
+import { getSession } from "@/lib/auth";
+
 
 type TeacherRow = { id: string; name: string };
 type ClassRow = {
@@ -14,45 +16,56 @@ type ClassRow = {
 
 export default async function KelasPage() {
   const db = await getDb();
+  const user = await getSession();
 
-  const teachersRaw = await db
-    .collection("teachers")
-    .find({})
-    .sort({ createdAt: -1 })
-    .toArray();
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
 
-  const teachers: TeacherRow[] = teachersRaw.map((t: any) => ({
-    id: String(t._id),
-    name: String(t.name ?? ""),
-  }));
+  // ==========================
+  // FILTER BERDASARKAN ROLE
+  // ==========================
+  let classFilter: any = {};
+
+  if (user.role === "WALI") {
+    classFilter = {
+      waliKelasId: new ObjectId(user.id),
+    };
+  }
+
+  if (user.role === "SISWA") {
+    // siswa TIDAK BOLEH masuk halaman kelas
+    throw new Error("Forbidden");
+  }
 
   const classesAgg = await db
-    .collection("classes")
-    .aggregate([
-      { $sort: { createdAt: -1 } },
-      {
-        $lookup: {
-          from: "teachers",
-          localField: "waliKelasId",
-          foreignField: "_id",
-          as: "wali",
-        },
+  .collection("classes")
+  .aggregate([
+    { $match: classFilter },
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "waliKelasId",
+        foreignField: "_id",
+        as: "wali",
       },
-      { $unwind: { path: "$wali", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 1,
-          name: 1,
-          academicYear: 1,
-          semester: 1,
-          waliKelasId: 1,
-          waliKelasName: { $ifNull: ["$wali.name", "-"] },
-        },
+    },
+    { $unwind: { path: "$wali", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        name: 1,
+        academicYear: 1,
+        semester: 1,
+        waliKelasId: 1,
+        waliKelasName: { $ifNull: ["$wali.name", "-"] },
       },
-    ])
-    .toArray();
+    },
+  ])
+  .toArray();
 
-  const classes: ClassRow[] = classesAgg.map((c: any) => ({
+  const classes = classesAgg.map((c: any) => ({
     id: String(c._id),
     name: String(c.name ?? ""),
     academicYear: String(c.academicYear ?? ""),
@@ -61,5 +74,23 @@ export default async function KelasPage() {
     waliKelasName: String(c.waliKelasName ?? "-"),
   }));
 
-  return <KelasClient initialTeachers={teachers} initialClasses={classes} />;
+  const teachersRaw = await db
+  .collection("users")
+  .find({ role: "WALI" })
+  .sort({ name: 1 })
+  .toArray();
+
+const teachers = teachersRaw.map((u: any) => ({
+  id: String(u._id),
+  name: String(u.name ?? "-"),
+}));
+
+
+  const KelasClient = (await import("./KelasClient")).default;
+  return (
+  <KelasClient
+    initialTeachers={teachers}
+    initialClasses={classes}
+  />
+);
 }

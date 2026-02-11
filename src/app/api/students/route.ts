@@ -1,70 +1,70 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongo";
 import { ObjectId } from "mongodb";
+import { getSession } from "@/lib/auth";
 
 
 function isValidObjectId(v: string) {
   return /^[a-fA-F0-9]{24}$/.test(v);
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const classIdRaw = searchParams.get("classId");
-
+export async function GET() {
   const db = await getDb();
+  const user = await getSession();
+
+  if (!user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
+  if (user.role === "SISWA") {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
 
   const match: any = {};
 
-  // ✅ kalau null / "undefined" / "" -> jangan filter
-  const classId = (classIdRaw ?? "").trim();
-  if (classId && classId !== "undefined" && classId !== "null") {
-    if (isValidObjectId(classId)) {
-      match.$or = [
-        { classId: new ObjectId(classId) }, // ObjectId
-        { classId: classId },               // string
-      ];
-    } else {
-      // kalau bukan 24 hex, anggap string saja
-      match.classId = classId;
-    }
+  if (user.role === "WALI") {
+    const waliClasses = await db
+      .collection("classes")
+      .find({ waliKelasId: new ObjectId(user.id) })
+      .project({ _id: 1 })
+      .toArray();
+
+    const classIds = waliClasses.map((c) => c._id);
+    match.classId = { $in: classIds };
   }
 
-
-  const rows = await db
-    .collection("students")
-    .aggregate([
-      { $match: match },
-      { $sort: { createdAt: -1 } },
-      {
-        $lookup: {
-          from: "classes",
-          localField: "classId",
-          foreignField: "_id",
-          as: "class",
-        },
+  const rows = await db.collection("students").aggregate([
+    { $match: match },
+    { $sort: { createdAt: -1 } },
+    {
+      $lookup: {
+        from: "classes",
+        localField: "classId",
+        foreignField: "_id",
+        as: "class",
       },
-      { $unwind: { path: "$class", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 1,
-          nis: 1,
-          name: 1,
-          classId: 1,
-          className: { $ifNull: ["$class.name", "-"] },
-        },
+    },
+    { $unwind: { path: "$class", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        nis: 1,
+        name: 1,
+        classId: 1,
+        className: { $ifNull: ["$class.name", "-"] },
       },
-    ])
-    .toArray();
+    },
+  ]).toArray();
 
-  const data = rows.map((s: any) => ({
-    id: String(s._id),
-    nis: String(s.nis ?? ""),
-    name: String(s.name ?? ""),
-    classId: String(s.classId ?? ""),
-    className: String(s.className ?? "-"),
-  }));
-
-  return NextResponse.json(data);
+  return NextResponse.json(
+    rows.map((s: any) => ({
+      id: s._id.toString(),
+      nis: s.nis,
+      name: s.name,
+      classId: s.classId?.toString() ?? "",
+      className: s.className,
+    }))
+  );
 }
 
 export async function POST(req: Request) {
@@ -127,3 +127,5 @@ export async function DELETE(req: Request) {
 
   return NextResponse.json({ message: "deleted" });
 }
+
+

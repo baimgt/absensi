@@ -3,18 +3,34 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+// ===================== TYPE =====================
+type Teacher = {
+  id: string;
+  name: string;
+  nip: string;
+  phone: string | null;
+};
 
-type Teacher = { _id: string; name: string };
-type Student = { _id: string; name: string; nis: string };
+type Student = {
+  _id: string;
+  name: string;
+  nis: string;
+  classId: string;
+};
 
+type Class = {
+  _id: string;
+  name: string;
+  waliKelasId: string;
+};
 
 interface SuperadminClientProps {
-  classes: any; // bisa diganti tipe yang lebih spesifik
+  classes: Class[];
 }
 
-
+// ===================== MAIN COMPONENT =====================
 export default function SuperadminClient({ classes }: SuperadminClientProps) {
-  const [role, setRole] = useState("ADMIN");
+  const [role, setRole] = useState<"ADMIN" | "WALI" | "SISWA">("ADMIN");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [teacherId, setTeacherId] = useState("");
@@ -22,66 +38,84 @@ export default function SuperadminClient({ classes }: SuperadminClientProps) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [msg, setMsg] = useState("");
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   // ================= FETCH DATA =================
   useEffect(() => {
     if (role === "WALI") {
+      setLoadingTeachers(true);
       fetch("/api/teachers")
         .then((r) => r.json())
-        .then(setTeachers);
+        .then(setTeachers)
+        .finally(() => setLoadingTeachers(false));
     }
-
     if (role === "SISWA") {
+      setLoadingStudents(true);
       fetch("/api/students")
         .then((r) => r.json())
-        .then(setStudents);
+        .then(setStudents)
+        .finally(() => setLoadingStudents(false));
     }
   }, [role]);
 
   // ================= SUBMIT =================
   async function submit() {
-  setMsg("");
+    setMsg("");
+    let body: any = { role, password };
 
-  let body: any = { role, password };
+    // ===== ADMIN =====
+    if (role === "ADMIN") {
+      if (!username) return setMsg("Username harus diisi");
+      body.username = username;
+      body.name = username;
+    }
 
-  if (role === "ADMIN") {
-    body.username = username;
-    body.name = username;
+    // ===== WALI =====
+if (role === "WALI") {
+  if (!teacherId) return setMsg("Pilih Wali dulu");
+  const t = teachers.find((x) => x.id === teacherId);
+  if (!t) return setMsg("Wali tidak ditemukan");
+
+  const kelas = classes.find((c) => c.waliKelasId === teacherId);
+
+  body.username = `wali_${t.id}`;
+  body.name = t.name;
+  body.teacherId = t.id; // ✅ FIX PALING PENTING
+
+  if (kelas) {
+    body.classIds = [kelas._id];
   }
-
-  console.log("teacherId:", teacherId);
-console.log("teachers:", teachers.map(t => t._id));
-
-
-  if (role === "WALI") {
-    const t = teachers.find((x) => x._id === teacherId);
-    if (!t) return setMsg("Pilih wali dulu");
-
-    body.username = `wali_${teacherId}`;
-    body.name = t.name;
-  }
-
-  if (role === "SISWA") {
-    const s = students.find((x) => x._id === studentId);
-    if (!s) return setMsg("Pilih siswa dulu");
-
-    body.username = `siswa_${s.nis}`;
-    body.name = s.name;
-  }
-
-  const res = await fetch("/api/superadmin/users", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  if (!res.ok) return setMsg(data.message || "Gagal");
-
-  setMsg("✅ Akun berhasil dibuat");
-  setPassword("");
 }
 
+
+    // ===== SISWA =====
+    if (role === "SISWA") {
+      if (!studentId) return setMsg("Pilih Siswa dulu");
+      const s = students.find((x) => x?._id === studentId);
+      if (!s) return setMsg("Siswa tidak ditemukan");
+
+      body.username = `siswa_${s.nis}`;
+      body.name = s.name;
+      body.classId = s.classId; // otomatis assign classId
+    }
+
+    // ===== POST TO BACKEND =====
+    try {
+      const res = await fetch("/api/superadmin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!res.ok) return setMsg(data.message || "Gagal");
+      setMsg("✅ Akun berhasil dibuat");
+      setPassword("");
+    } catch (err) {
+      setMsg("Terjadi kesalahan server");
+    }
+  }
 
   // ================= UI =================
   return (
@@ -96,7 +130,11 @@ console.log("teachers:", teachers.map(t => t._id));
         {/* ROLE */}
         <select
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => {
+            setRole(e.target.value as any);
+            setTeacherId("");
+            setStudentId("");
+          }}
           className="w-full mb-4 rounded-xl px-4 py-3 font-semibold ring-1 ring-black/10"
         >
           <option value="ADMIN">Admin</option>
@@ -125,8 +163,8 @@ console.log("teachers:", teachers.map(t => t._id));
               >
                 <option value="">Pilih Wali</option>
                 {teachers.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.name}
+                  <option key={t.id} value={t.id}>
+                    {t.name} — {t.nip}
                   </option>
                 ))}
               </select>
@@ -162,7 +200,8 @@ console.log("teachers:", teachers.map(t => t._id));
 
         <button
           onClick={submit}
-          className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-white font-extrabold hover:bg-slate-800"
+          disabled={loadingTeachers || loadingStudents}
+          className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-white font-extrabold hover:bg-slate-800 disabled:opacity-50"
         >
           Simpan Akun
         </button>
