@@ -77,53 +77,49 @@ export default async function DashboardPage() {
 }
 
   // ================= WALI =================
-  if (session.role === "WALI") {
-    // cari kelas wali
-    const classes = await db
-      .collection("classes")
-      .find({ waliKelasId: new ObjectId(session.id) })
-      .toArray();
+ if (session.role === "WALI") {
+  // cari kelas yang diwali
+  const waliClasses = await db
+    .collection("classes")
+    .find({ waliKelasId: new ObjectId(session.id) })
+    .project({ _id: 1 })
+    .toArray();
 
-    const classIds = classes.map((c) => c._id);
+  const classIds = waliClasses.map((c) => c._id);
 
-    const totalSiswa = await db.collection("students").countDocuments({
-      classId: { $in: classIds },
-    });
-
-    // kehadiran hari ini
-    const today = new Date().toISOString().slice(0, 10);
-
-    const attendance = await db
-      .collection("attendance")
-      .aggregate([
-        {
-          $match: {
-            date: today,
-            classId: { $in: classIds.map(String) },
-          },
+  const attendanceRaw = await db
+    .collection("attendance")
+    .aggregate([
+      {
+        $match: {
+          classId: { $in: classIds },
+          status: { $ne: "BELUM" },
         },
-        {
-          $group: {
-            _id: "$status",
-            total: { $sum: 1 },
-          },
+      },
+      {
+        $group: {
+          _id: "$status",
+          total: { $sum: 1 },
         },
-      ])
-      .toArray();
+      },
+    ])
+    .toArray();
 
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-extrabold">Dashboard Wali Kelas</h1>
+  // 🔑 FIX TYPE DI SINI
+  const attendance: { _id: string; total: number }[] =
+    attendanceRaw.map((r: any) => ({
+      _id: String(r._id),
+      total: Number(r.total),
+    }));
 
-        <div className="grid grid-cols-2 gap-6">
-          <Stat title="Jumlah Kelas" value={classes.length} />
-          <Stat title="Total Siswa" value={totalSiswa} />
-        </div>
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-extrabold">Dashboard Wali Kelas</h1>
 
-        <DashboardWaliChart data={attendance} />
-      </div>
-    );
-  }
+      <DashboardWaliChart data={attendance} />
+    </div>
+  );
+}
 
   // ================= SISWA =================
   redirect("/kehadiran-siswa");
