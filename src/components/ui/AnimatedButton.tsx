@@ -3,12 +3,12 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 
-type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = React.ComponentPropsWithoutRef<"button"> & {
   loading?: boolean;
   variant?: "primary" | "success" | "warning" | "danger";
 };
 
-const VARIANT_CLASS: Record<NonNullable<Props["variant"]>, string> = {
+const VARIANT_CLASS: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary: "bg-[#3f63e6] hover:bg-blue-700 text-white",
   success: "bg-emerald-600 hover:bg-emerald-700 text-white",
   warning: "bg-amber-400 hover:bg-amber-500 text-black",
@@ -22,11 +22,12 @@ export default function AnimatedButton({
   disabled,
   children,
   ...props
-}: Props) {
+}: ButtonProps) {
   const isDisabled = disabled || loading;
 
   return (
     <motion.button
+      {...(props as any)} // 🔑 FIX UTAMA
       whileHover={!isDisabled ? { y: -1 } : undefined}
       whileTap={!isDisabled ? { scale: 0.96 } : undefined}
       transition={{ type: "spring", stiffness: 500, damping: 30 }}
@@ -40,7 +41,6 @@ export default function AnimatedButton({
         VARIANT_CLASS[variant],
         className,
       ].join(" ")}
-      {...props}
     >
       {/* Ripple */}
       <motion.span
