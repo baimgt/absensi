@@ -22,50 +22,59 @@ export default async function DashboardPage() {
 
   // ================= ADMIN =================
   if (session.role === "ADMIN") {
-    const totalKelas = await db.collection("classes").countDocuments();
-    const totalSiswa = await db.collection("students").countDocuments();
+  const totalKelas = await db.collection("classes").countDocuments();
+  const totalSiswa = await db.collection("students").countDocuments();
 
-    // grafik: jumlah siswa per kelas
-    const perClass = await db
-      .collection("students")
-      .aggregate([
-        {
-          $group: {
-            _id: "$classId",
-            total: { $sum: 1 },
-          },
+  const perClassRaw = await db
+    .collection("students")
+    .aggregate([
+      {
+        $group: {
+          _id: "$classId",
+          total: { $sum: 1 },
         },
-        {
-          $lookup: {
-            from: "classes",
-            localField: "_id",
-            foreignField: "_id",
-            as: "class",
-          },
+      },
+      {
+        $lookup: {
+          from: "classes",
+          localField: "_id",
+          foreignField: "_id",
+          as: "class",
         },
-        { $unwind: "$class" },
-        {
-          $project: {
-            className: "$class.name",
-            total: 1,
-          },
+      },
+      { $unwind: { path: "$class", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 0,
+          className: { $ifNull: ["$class.name", "Tanpa Kelas"] },
+          total: 1,
         },
-      ])
-      .toArray();
+      },
+      { $sort: { total: -1 } },
+    ])
+    .toArray();
 
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-extrabold">Dashboard Admin</h1>
+  // 🔑 INI YANG PENTING (TYPE FIX)
+  const perClass: { className: string; total: number }[] = perClassRaw.map(
+    (r: any) => ({
+      className: String(r.className),
+      total: Number(r.total),
+    })
+  );
 
-        <div className="grid grid-cols-2 gap-6">
-          <Stat title="Total Kelas" value={totalKelas} />
-          <Stat title="Total Siswa" value={totalSiswa} />
-        </div>
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-extrabold">Dashboard Admin</h1>
 
-        <DashboardAdminChart data={perClass} />
+      <div className="grid grid-cols-2 gap-6">
+        <Stat title="Total Kelas" value={totalKelas} />
+        <Stat title="Total Siswa" value={totalSiswa} />
       </div>
-    );
-  }
+
+      <DashboardAdminChart data={perClass} />
+    </div>
+  );
+}
 
   // ================= WALI =================
   if (session.role === "WALI") {
