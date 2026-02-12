@@ -33,16 +33,16 @@ type Jadwal = { label: string; start: string; end: string };
 
 // ✅ 10 jadwal (kamu bisa ganti jamnya)
 const jadwal: Jadwal[] = [
-  { label: "Jadwal 1", start: "07:00", end: "07:10" },
-  { label: "Jadwal 2", start: "07:30", end: "07:40" },
-  { label: "Jadwal 3", start: "08:00", end: "08:10" },
-  { label: "Jadwal 4", start: "08:30", end: "08:40" },
-  { label: "Jadwal 5", start: "09:00", end: "09:10" },
-  { label: "Jadwal 6", start: "09:30", end: "09:40" },
-  { label: "Jadwal 7", start: "10:00", end: "10:10" },
-  { label: "Jadwal 8", start: "10:30", end: "10:40" },
-  { label: "Jadwal 9", start: "11:00", end: "11:10" },
-  { label: "Jadwal 10", start: "21:30", end: "23:40" },
+  { label: "Jadwal 1", start: "07:15", end: "08:00" },
+  { label: "Jadwal 2", start: "08:00", end: "08:45" },
+  { label: "Jadwal 3", start: "08:45", end: "09:30" },
+  { label: "Jadwal 4", start: "09:30", end: "10:15" },
+  { label: "Jadwal 5", start: "10:30", end: "11:15" },
+  { label: "Jadwal 6", start: "11:15", end: "12:00" },
+  { label: "Jadwal 7", start: "12:45", end: "13:30" },
+  { label: "Jadwal 8", start: "13:30", end: "14:15" },
+  { label: "Jadwal 9", start: "14:15", end: "15:00" },
+  { label: "Jadwal 10", start: "00:00", end: "01:40" },
 ];
 
 type AbsenLog = {
