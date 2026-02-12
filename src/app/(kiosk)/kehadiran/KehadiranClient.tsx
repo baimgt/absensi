@@ -527,7 +527,7 @@ useEffect(() => {
                     <motion.button
                       whileTap={canScan ? { scale: 0.98 } : undefined}
                       whileHover={canScan ? { y: -1 } : undefined}
-                      onClick={onSubmitScan}
+                      onClick={() => onSubmitScan()}
                       disabled={!canScan}
                       className={
                         "rounded-xl px-5 py-3 text-sm font-extrabold shadow-sm " +
