@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is missing in environment variables");
+}
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get("session")?.value;
@@ -13,25 +16,25 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    // @ts-ignore
-    req.headers.set("x-user-role", payload.role);
-    // @ts-ignore
-    req.headers.set("x-user-id", payload.id);
-    // @ts-ignore
-    req.headers.set("x-user-classid", payload.classId || "");
-    return NextResponse.next();
+
+    const res = NextResponse.next();
+
+    res.headers.set("x-user-role", String(payload.role || ""));
+    res.headers.set("x-user-id", String(payload.id || ""));
+    res.headers.set("x-user-classid", String(payload.classId || ""));
+
+    return res;
   } catch (err) {
     console.error("JWT verify error:", err);
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  
-
-  
 }
 
-
-
-// middleware berlaku untuk semua halaman, kecuali login
 export const config = {
-  matcher: ["/((?!login).*)"], 
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/kelas/:path*",
+    // tambahkan halaman yang butuh auth
+  ],
 };
