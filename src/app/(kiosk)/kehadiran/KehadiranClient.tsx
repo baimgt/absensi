@@ -159,7 +159,8 @@ function StatPill({
 
 
 export default function KehadiranClient({ initialAttendance }: KehadiranClientProps) {
- const [now, setNow] = useState<Date | null>(null);
+ const [now, setNow] = useState<Date>(() => getNowWITA());
+
 
   // input scan (NIS)
   const [scan, setScan] = useState("");
