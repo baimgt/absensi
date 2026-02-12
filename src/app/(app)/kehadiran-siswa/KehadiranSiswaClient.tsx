@@ -142,7 +142,9 @@ export default function KehadiranSiswaClient({
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+        {/* ================= DESKTOP ================= */}
+          <div className="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+
           <div className="grid grid-cols-[80px_1fr_140px_260px] gap-0 bg-slate-50 px-4 py-3 text-xs font-extrabold text-slate-600">
             <div>No</div>
             <div>Siswa</div>
@@ -208,7 +210,73 @@ export default function KehadiranSiswaClient({
             )}
           </div>
         </div>
+
+        {/* ================= MOBILE ================= */}
+<div className="grid gap-4 md:hidden">
+  {filtered.map((s, idx) => {
+    const a = attendanceMap.get(s.id);
+    const st = a?.status ?? "BELUM";
+
+    return (
+      <div
+        key={s.id}
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+      >
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-bold text-slate-500">#{idx + 1}</div>
+          <span
+            className={`rounded-xl px-3 py-1 text-xs font-extrabold ${pillClass(st)}`}
+          >
+            {STATUS.find((x) => x.key === st)?.label ?? st}
+          </span>
+        </div>
+
+        <div className="mt-2">
+          <div className="text-lg font-extrabold text-slate-900">
+            {s.name}
+          </div>
+          <div className="text-sm font-semibold text-slate-500">
+            NIS: {s.nis}
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {STATUS.filter((x) => x.key !== "BELUM").map((x) => (
+            <motion.button
+              key={x.key}
+              whileTap={{ scale: 0.97 }}
+              disabled={loadingId === s.id}
+              onClick={() => setStatus(s, x.key)}
+              className={
+                "rounded-xl py-3 text-xs font-extrabold shadow-sm ring-1 ring-black/5 " +
+                (x.key === "HADIR"
+                  ? "bg-emerald-600 text-white"
+                  : x.key === "SAKIT"
+                  ? "bg-amber-400 text-slate-900"
+                  : x.key === "IZIN"
+                  ? "bg-sky-600 text-white"
+                  : "bg-rose-600 text-white") +
+                (loadingId === s.id ? " opacity-70 cursor-not-allowed" : "")
+              }
+            >
+              {loadingId === s.id ? "..." : x.label}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+    );
+  })}
+
+  {filtered.length === 0 && (
+    <div className="rounded-2xl bg-white py-12 text-center text-sm font-semibold text-slate-500 shadow-sm ring-1 ring-black/5">
+      Tidak ada siswa untuk filter ini.
+    </div>
+  )}
+</div>
+
       </div>
     </div>
+
+    
   );
 }

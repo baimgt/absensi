@@ -66,10 +66,10 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-extrabold">Dashboard Admin</h1>
 
-      <div className="grid grid-cols-2 gap-6">
-        <Stat title="Total Kelas" value={totalKelas} />
-        <Stat title="Total Siswa" value={totalSiswa} />
-      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+  <Stat title="Total Kelas" value={totalKelas} />
+  <Stat title="Total Siswa" value={totalSiswa} />
+</div>
 
       <DashboardAdminChart data={perClass} />
     </div>

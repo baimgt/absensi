@@ -109,58 +109,112 @@ export default function WaliKelasClient({
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              {["No.", "Nama", "NIP", "No. HP", "Aksi"].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      {/* ===== DESKTOP TABLE ===== */}
+<div className="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+  <table className="w-full text-sm">
+    <thead className="bg-slate-50">
+      <tr>
+        {["No.", "Nama", "NIP", "No. HP", "Aksi"].map((h) => (
+          <th key={h} className="px-4 py-3 text-left font-semibold">
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
 
-          <tbody>
-            {teachers.map((t, idx) => (
-              <tr key={t.id} className="border-t hover:bg-slate-50/50">
-                <td className="px-4 py-3">{idx + 1}</td>
-                <td className="px-4 py-3 font-semibold">{t.name}</td>
-                <td className="px-4 py-3">{t.nip || "-"}</td>
-                <td className="px-4 py-3">{t.phone || "-"}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="warning"
-                      className="rounded-lg px-3 py-1 text-xs"
-                      onClick={() => openEdit(t)}
-                      disabled={loading}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="rounded-lg px-3 py-1 text-xs"
-                      onClick={() => onDelete(t.id)}
-                      disabled={loading}
-                    >
-                      Hapus
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+    <tbody>
+      {teachers.map((t, idx) => (
+        <tr key={t.id} className="border-t hover:bg-slate-50/50">
+          <td className="px-4 py-3">{idx + 1}</td>
+          <td className="px-4 py-3 font-semibold">{t.name}</td>
+          <td className="px-4 py-3">{t.nip || "-"}</td>
+          <td className="px-4 py-3">{t.phone || "-"}</td>
+          <td className="px-4 py-3">
+            <div className="flex gap-2">
+              <Button
+                variant="warning"
+                className="rounded-lg px-3 py-1 text-xs"
+                onClick={() => openEdit(t)}
+                disabled={loading}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="danger"
+                className="rounded-lg px-3 py-1 text-xs"
+                onClick={() => onDelete(t.id)}
+                disabled={loading}
+              >
+                Hapus
+              </Button>
+            </div>
+          </td>
+        </tr>
+      ))}
 
-            {teachers.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                  Belum ada data wali kelas.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {teachers.length === 0 && (
+        <tr>
+          <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+            Belum ada data wali kelas.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+
+{/* ===== MOBILE CARD VIEW ===== */}
+<div className="grid gap-4 md:hidden">
+  {teachers.map((t, idx) => (
+    <div
+      key={t.id}
+      className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+    >
+      <div className="text-sm text-slate-500">#{idx + 1}</div>
+
+      <div className="mt-1 text-lg font-extrabold">{t.name}</div>
+
+      <div className="mt-2 space-y-1 text-sm text-slate-600">
+        <div>
+          <span className="font-semibold">NIP:</span>{" "}
+          {t.nip || "-"}
+        </div>
+        <div>
+          <span className="font-semibold">No. HP:</span>{" "}
+          {t.phone || "-"}
+        </div>
       </div>
+
+      <div className="mt-4 flex gap-2">
+        <Button
+          variant="warning"
+          className="flex-1 rounded-xl py-2 text-xs"
+          onClick={() => openEdit(t)}
+          disabled={loading}
+        >
+          Edit
+        </Button>
+
+        <Button
+          variant="danger"
+          className="flex-1 rounded-xl py-2 text-xs"
+          onClick={() => onDelete(t.id)}
+          disabled={loading}
+        >
+          Hapus
+        </Button>
+      </div>
+    </div>
+  ))}
+
+  {teachers.length === 0 && (
+    <div className="rounded-2xl bg-white py-12 text-center text-slate-500 shadow-sm ring-1 ring-black/5">
+      Belum ada data wali kelas.
+    </div>
+  )}
+</div>
+
+
 
       <Modal
         open={open}

@@ -64,7 +64,7 @@ export default function RekapClient({ classes }: { classes: ClassRow[] }) {
   }, [rows]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div>
       <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
@@ -81,13 +81,7 @@ export default function RekapClient({ classes }: { classes: ClassRow[] }) {
               onChange={(e) => setStart(e.target.value)}
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"
             />
-            <input
-              type="date"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"
-            />
-
+            
             <button
               onClick={exportExcel}
               disabled={!selected || loading}
@@ -163,7 +157,7 @@ export default function RekapClient({ classes }: { classes: ClassRow[] }) {
             </div>
 
             {/* TABLE */}
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+           <div className="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
               <div className="grid grid-cols-[70px_120px_1fr_90px_90px_90px_90px_90px] bg-slate-50 px-4 py-3 text-xs font-extrabold text-slate-600">
                 <div>No</div>
                 <div>NIS</div>
@@ -201,12 +195,76 @@ export default function RekapClient({ classes }: { classes: ClassRow[] }) {
                 ))
               )}
             </div>
+
+            {/* ================= MOBILE CARD ================= */}
+<div className="grid gap-4 md:hidden">
+  {loading ? (
+    <div className="rounded-2xl bg-white py-10 text-center text-sm font-semibold text-slate-500 shadow-sm ring-1 ring-black/5">
+      Loading...
+    </div>
+  ) : rows.length === 0 ? (
+    <div className="rounded-2xl bg-white py-10 text-center text-sm font-semibold text-slate-500 shadow-sm ring-1 ring-black/5">
+      Belum ada data untuk periode ini.
+    </div>
+  ) : (
+    rows.map((r, i) => (
+      <div
+        key={`${r.nis}-${i}`}
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+      >
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-extrabold text-slate-500">
+            #{i + 1}
+          </div>
+          <div className="text-xs font-bold text-slate-500">
+            NIS: {r.nis}
+          </div>
+        </div>
+
+        <div className="mt-1 text-lg font-black text-slate-900">
+          {r.name}
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-extrabold">
+          <StatMini title="Hadir" value={r.hadir} cls="bg-emerald-600 text-white" />
+          <StatMini title="Sakit" value={r.sakit} cls="bg-amber-400 text-slate-900" />
+          <StatMini title="Izin" value={r.izin} cls="bg-sky-600 text-white" />
+          <StatMini title="Alpa" value={r.alpa} cls="bg-rose-600 text-white" />
+        </div>
+
+        <div className="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-center text-sm font-black text-white">
+          Total: {r.total}
+        </div>
+      </div>
+    ))
+  )}
+</div>
+
           </>
+          
         )}
       </div>
     </div>
   );
 }
+
+function StatMini({
+  title,
+  value,
+  cls,
+}: {
+  title: string;
+  value: number;
+  cls: string;
+}) {
+  return (
+    <div className={"rounded-xl px-3 py-2 text-center shadow-sm " + cls}>
+      <div className="text-xs font-extrabold opacity-90">{title}</div>
+      <div className="text-lg font-black">{value}</div>
+    </div>
+  );
+}
+
 
 function Stat({ title, value, cls }: { title: string; value: number; cls: string }) {
   return (

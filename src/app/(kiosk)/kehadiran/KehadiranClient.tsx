@@ -1,13 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { Html5Qrcode } from "html5-qrcode";
+
+
 
 type LogRow = {
   name: string;
   kelas: string;
   pulang?: string;
   status: "Hadir" | "Terlambat" | "Belum Absen";
+};
+
+type Student = {
+  nis: string;
+  name: string;
+};
+
+type KehadiranClientProps = {
+  initialAttendance: {
+    id: string;
+    studentId: string;
+    classId: string;
+    date: string;
+    status: string;
+    note?: string;
+  }[];
 };
 
 type Jadwal = { label: string; start: string; end: string };
@@ -23,7 +42,7 @@ const jadwal: Jadwal[] = [
   { label: "Jadwal 7", start: "10:00", end: "10:10" },
   { label: "Jadwal 8", start: "10:30", end: "10:40" },
   { label: "Jadwal 9", start: "11:00", end: "11:10" },
-  { label: "Jadwal 10", start: "17:30", end: "18:40" },
+  { label: "Jadwal 10", start: "21:30", end: "23:40" },
 ];
 
 type AbsenLog = {
@@ -137,12 +156,52 @@ function StatPill({
   );
 }
 
-export default function KehadiranClient() {
-  const [now, setNow] = useState(() => getNowWITA());
+
+
+export default function KehadiranClient({ initialAttendance }: KehadiranClientProps) {
+ const [now, setNow] = useState<Date | null>(null);
 
   // input scan (NIS)
   const [scan, setScan] = useState("");
   const [inputEl, setInputEl] = useState<HTMLInputElement | null>(null);
+  const scannerRef = useRef<HTMLDivElement | null>(null);
+  const lastScannedRef = useRef<string>("");
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const [attendance, setAttendance] = useState<KehadiranClientProps["initialAttendance"]>(
+  initialAttendance || []
+);
+
+// inisialisasi QR scanner
+useEffect(() => {
+  if (!scannerRef.current) return;
+
+  const html5QrCode = new Html5Qrcode("qr-scanner");
+  html5QrCodeRef.current = html5QrCode;
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      const nis = decodedText.trim();
+      if (nis && lastScannedRef.current !== nis) {
+        lastScannedRef.current = nis;
+        setScan(nis);
+        onSubmitScan(nis);
+      }
+    },
+    (errorMessage) => {
+      // optional debug
+    }
+  ).catch(console.error);
+
+  return () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.getState() === 2) { 
+      // 2 = SCANNING, 1 = STOPPED, 0 = PAUSED
+      html5QrCodeRef.current.stop().catch(() => {});
+    }
+    lastScannedRef.current = "";
+  };
+}, []);
 
   // hasil scan terakhir
   const [lastScan, setLastScan] = useState<{
@@ -215,81 +274,98 @@ export default function KehadiranClient() {
     } catch {}
   }
 
-  async function onSubmitScan() {
-    const nis = scan.trim();
-    if (!nis) return;
+ async function onSubmitScan(nisParam?: string) {
+  const nis = nisParam ?? scan.trim();
+  if (!nis) return;
 
-    // ❌ blok kalau di luar jadwal
-    if (!activeSlot) {
-      setSuccessText("⛔ Absen hanya bisa pada jam jadwal yang ditentukan");
+  if (!activeSlot) {
+    setSuccessText("⛔ Absen hanya bisa pada jam jadwal yang ditentukan");
+    setSuccessPulse(true);
+    setTimeout(() => setSuccessPulse(false), 700);
+    return;
+  }
+
+  try {
+    // POST ke API attendance
+    const res = await fetch("/api/absen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nis, 
+        date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+        status: "HADIR",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setSuccessText(`❌ ${data.message || "NIS tidak terdaftar"}`);
       setSuccessPulse(true);
-      setTimeout(() => setSuccessPulse(false), 700);
+      setTimeout(() => setSuccessPulse(false), 650);
       return;
     }
 
-    try {
-      const res = await fetch("/api/absen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nis }),
-      });
+    // beep & log sukses
+    beepSuccess();
+    const time = formatTimeWITA(getNowWITA());
 
-      if (!res.ok) {
-        setSuccessText("❌ NIS tidak terdaftar");
-        setSuccessPulse(true);
-        setTimeout(() => setSuccessPulse(false), 650);
-        return;
-      }
+    setLastScan({
+      time,
+      name: data.name || "Nama Siswa", // kalau API ngirim name
+      status: data.status ?? "Hadir",
+    });
 
-      const data = await res.json();
-
-      // ✅ sukses
-      beepSuccess();
-
-      const tParts = new Intl.DateTimeFormat("id-ID", {
-        timeZone: TZ,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }).formatToParts(now);
-
-      const hh = tParts.find((p) => p.type === "hour")?.value ?? "00";
-      const mm = tParts.find((p) => p.type === "minute")?.value ?? "00";
-      const ss = tParts.find((p) => p.type === "second")?.value ?? "00";
-      const time = `${hh}:${mm}:${ss}`;
-
-      setLastScan({
+    setLogs((prev) => [
+      {
         time,
-        name: data.student.name,
-        status: "Hadir",
-      });
+        nis,
+        name: data.name || "Siswa",
+        status: data.status ?? "Hadir",
+        slot: activeSlot.label,
+      },
+      ...prev,
+    ].slice(0, 10));
 
-      setLogs((prev) =>
-        [
-          {
-            time,
-            nis,
-            name: data.student.name,
-            status: "Hadir",
-            slot: activeSlot.label,
-          },
-          ...prev,
-        ].slice(0, 10)
-      );
+    setSuccessText("✅ Absen berhasil");
+    setSuccessPulse(true);
+    setTimeout(() => setSuccessPulse(false), 700);
 
-      setSuccessText("✅ Absen berhasil");
-      setSuccessPulse(true);
-      setTimeout(() => setSuccessPulse(false), 700);
+    setScan("");
+    lastScannedRef.current = "";
 
-      setScan("");
-      setTimeout(() => inputEl?.focus(), 50);
-    } catch {
-      setSuccessText("❌ Terjadi kesalahan");
-      setSuccessPulse(true);
-      setTimeout(() => setSuccessPulse(false), 700);
-    }
+    // update attendance state
+    setAttendance((prev = []) => {
+  const existing = prev.find((a) => a.studentId === data.studentId);
+  if (existing) {
+    return prev.map((a) =>
+      a.studentId === data.studentId
+        ? { ...a, status: "Hadir", note: "", date: formatTimeWITA(getNowWITA()) }
+        : a
+    );
   }
+  return [
+    {
+      id: data.attendanceId || new Date().getTime().toString(),
+      studentId: data.studentId,
+      classId: data.student.classId,
+      date: formatTimeWITA(getNowWITA()),
+      status: "Hadir",
+      note: "",
+    },
+    ...prev,
+  ];
+});
+  } catch (err) {
+    console.error(err);
+    setSuccessText("❌ Terjadi kesalahan");
+    setSuccessPulse(true);
+    setTimeout(() => setSuccessPulse(false), 700);
+  }
+}
+
+
+
 
   return (
     <div className="min-h-screen w-full">
@@ -481,9 +557,11 @@ export default function KehadiranClient() {
                     transition={{ duration: 0.35 }}
                     className="w-full max-w-[420px] rounded-3xl bg-white/10 p-8 text-center ring-1 ring-white/15"
                   >
-                    <div className="mx-auto mb-4 grid h-32 w-32 place-items-center rounded-3xl bg-white/15 ring-1 ring-white/15">
-                      <div className="text-4xl">🖼️</div>
-                    </div>
+                   <div
+  id="qr-scanner"
+  ref={scannerRef}
+  className="mx-auto mb-4 w-full max-w-[320px] rounded-3xl overflow-hidden bg-white/15 ring-1 ring-white/15"
+/>
 
                     <div className="text-xs font-semibold text-white/70">Waktu Absen</div>
                     <div className="mt-1 text-sm font-extrabold text-white">

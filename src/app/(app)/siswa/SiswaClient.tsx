@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import { QRCodeCanvas } from "qrcode.react";
 
 
 type ClassRow = { id: string; name: string };
@@ -64,6 +65,35 @@ const labelCls = "mb-2 block text-sm font-semibold text-slate-700";
     setFormClassId(s.classId);
     setOpen(true);
   }
+
+  function downloadQR(student: StudentRow) {
+  const canvas = document.createElement("canvas");
+  const qrValue = student.nis; // atau JSON { nis, name, class } kalau mau lebih lengkap
+  const qr = <QRCodeCanvas value={qrValue} size={256} />;
+
+  // render QR ke canvas sementara
+  const tempDiv = document.createElement("div");
+  tempDiv.style.position = "absolute";
+  tempDiv.style.left = "-9999px";
+  document.body.appendChild(tempDiv);
+  import("react-dom/client").then(({ createRoot }) => {
+    const root = createRoot(tempDiv);
+    root.render(qr);
+
+    setTimeout(() => {
+      const canvasEl = tempDiv.querySelector("canvas") as HTMLCanvasElement;
+      if (canvasEl) {
+        const link = document.createElement("a");
+        link.href = canvasEl.toDataURL("image/png");
+        link.download = `QR-${student.nis}.png`;
+        link.click();
+      }
+      root.unmount();
+      tempDiv.remove();
+    }, 100);
+  });
+}
+
 
   async function refreshList() {
     const qs = filterClassId === "ALL" ? "" : `?classId=${filterClassId}`;
@@ -146,58 +176,123 @@ const labelCls = "mb-2 block text-sm font-semibold text-slate-700";
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              {["No.", "NIS", "Nama Siswa", "Kelas", "Aksi"].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      <div className="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+  <table className="w-full text-sm">
+    <thead className="bg-slate-50">
+      <tr>
+        {["No.", "NIS", "Nama Siswa", "Kelas", "Aksi"].map((h) => (
+          <th key={h} className="px-4 py-3 text-left font-semibold">
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
 
-          <tbody>
-            {filtered.map((s, idx) => (
-              <tr key={s.id} className="border-t hover:bg-slate-50/50">
-                <td className="px-4 py-3">{idx + 1}</td>
-                <td className="px-4 py-3">{s.nis}</td>
-                <td className="px-4 py-3 font-semibold">{s.name}</td>
-                <td className="px-4 py-3">{s.className}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="warning"
-                      className="rounded-lg px-3 py-1 text-xs"
-                      onClick={() => openEdit(s)}
-                      disabled={loading}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="rounded-lg px-3 py-1 text-xs"
-                      onClick={() => onDelete(s.id)}
-                      disabled={loading}
-                    >
-                      Hapus
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+    <tbody>
+      {filtered.map((s, idx) => (
+        <tr key={s.id} className="border-t hover:bg-slate-50/50">
+          <td className="px-4 py-3">{idx + 1}</td>
+          <td className="px-4 py-3">{s.nis}</td>
+          <td className="px-4 py-3 font-semibold">{s.name}</td>
+          <td className="px-4 py-3">{s.className}</td>
+          <td className="px-4 py-3">
+            <div className="flex gap-2">
+              <Button
+                variant="warning"
+                className="rounded-lg px-3 py-1 text-xs"
+                onClick={() => openEdit(s)}
+                disabled={loading}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="danger"
+                className="rounded-lg px-3 py-1 text-xs"
+                onClick={() => onDelete(s.id)}
+                disabled={loading}
+              >
+                Hapus
+              </Button>
+              <Button
+                variant="primary"
+                className="rounded-lg px-3 py-1 text-xs"
+                onClick={() => downloadQR(s)}
+              >
+                QR
+              </Button>
+            </div>
+          </td>
+        </tr>
+      ))}
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
-                  Belum ada data siswa.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {filtered.length === 0 && (
+        <tr>
+          <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+            Belum ada data siswa.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+
+{/* ===== MOBILE CARD VIEW ===== */}
+<div className="grid gap-4 md:hidden">
+  {filtered.map((s, idx) => (
+    <div
+      key={s.id}
+      className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+    >
+      <div className="text-sm text-slate-500">#{idx + 1}</div>
+
+      <div className="mt-1 text-lg font-extrabold">{s.name}</div>
+
+      <div className="mt-2 space-y-1 text-sm text-slate-600">
+        <div>
+          <span className="font-semibold">NIS:</span> {s.nis}
+        </div>
+        <div>
+          <span className="font-semibold">Kelas:</span> {s.className}
+        </div>
       </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant="warning"
+          className="flex-1 rounded-xl py-2 text-xs"
+          onClick={() => openEdit(s)}
+          disabled={loading}
+        >
+          Edit
+        </Button>
+
+        <Button
+          variant="danger"
+          className="flex-1 rounded-xl py-2 text-xs"
+          onClick={() => onDelete(s.id)}
+          disabled={loading}
+        >
+          Hapus
+        </Button>
+
+        <Button
+          variant="primary"
+          className="flex-1 rounded-xl py-2 text-xs"
+          onClick={() => downloadQR(s)}
+        >
+          QR
+        </Button>
+      </div>
+    </div>
+  ))}
+
+  {filtered.length === 0 && (
+    <div className="rounded-2xl bg-white py-12 text-center text-slate-500 shadow-sm ring-1 ring-black/5">
+      Belum ada data siswa.
+    </div>
+  )}
+</div>
+
 
       {/* MODAL */}
      <Modal
@@ -226,6 +321,20 @@ const labelCls = "mb-2 block text-sm font-semibold text-slate-700";
         placeholder="contoh: 9522222"
       />
     </div>
+
+    {formNis && (
+  <div className="mt-4 flex flex-col items-center">
+    <div className="text-sm font-semibold text-slate-700">Preview QR</div>
+    <QRCodeCanvas
+      value={formNis}
+      size={120}
+      className="mt-2"
+      bgColor="#ffffff"  // background putih
+      fgColor="#b43939"  // foreground hitam
+      level="H"           // level koreksi error tertinggi
+    />
+  </div>
+)}
 
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-700">

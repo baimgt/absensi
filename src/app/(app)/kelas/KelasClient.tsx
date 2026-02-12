@@ -128,79 +128,140 @@ export default function KelasClient({
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              {[
-                "No.",
-                "Nama Kelas",
-                "Wali Kelas",
-                "Tahun Ajaran",
-                "Semester",
-                "Aksi",
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 text-left font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
+      {/* ===== DESKTOP TABLE ===== */}
+<div className="hidden md:block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+  <table className="w-full text-sm">
+    <thead className="bg-slate-50">
+      <tr>
+        {[
+          "No.",
+          "Nama Kelas",
+          "Wali Kelas",
+          "Tahun Ajaran",
+          "Semester",
+          "Aksi",
+        ].map((h) => (
+          <th key={h} className="px-4 py-3 text-left font-semibold">
+            {h}
+          </th>
+        ))}
+      </tr>
+    </thead>
 
-          <tbody>
-            {tableRows.map((row, idx) => {
-              // ✅ row dipakai, bukan c
-              const href = `/kelas/${row.id}/siswa`;
+    <tbody>
+      {tableRows.map((row, idx) => {
+        const href = `/kelas/${row.id}/siswa`;
 
-              return (
-                <tr key={row.id} className="border-t hover:bg-slate-50/50">
-                  <td className="px-4 py-3">{idx + 1}</td>
-                  <td className="px-4 py-3 font-semibold">{row.name}</td>
-                  <td className="px-4 py-3">{row.waliKelasName || "-"}</td>
-                  <td className="px-4 py-3">{row.academicYear}</td>
-                  <td className="px-4 py-3">{row.semester}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={href}
-                        className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700"
-                      >
-                        Lihat Siswa
-                      </Link>
+        return (
+          <tr key={row.id} className="border-t hover:bg-slate-50/50">
+            <td className="px-4 py-3">{idx + 1}</td>
+            <td className="px-4 py-3 font-semibold">{row.name}</td>
+            <td className="px-4 py-3">{row.waliKelasName || "-"}</td>
+            <td className="px-4 py-3">{row.academicYear}</td>
+            <td className="px-4 py-3">{row.semester}</td>
+            <td className="px-4 py-3">
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={href}
+                  className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  Lihat Siswa
+                </Link>
 
-                      <Button
-                        variant="warning"
-                        className="rounded-lg px-3 py-1 text-xs"
-                        onClick={() => openEdit(row)}
-                        disabled={loading}
-                      >
-                        Edit
-                      </Button>
+                <Button
+                  variant="warning"
+                  className="rounded-lg px-3 py-1 text-xs"
+                  onClick={() => openEdit(row)}
+                  disabled={loading}
+                >
+                  Edit
+                </Button>
 
-                      <Button
-                        variant="danger"
-                        className="rounded-lg px-3 py-1 text-xs"
-                        onClick={() => onDelete(row.id)}
-                        disabled={loading}
-                      >
-                        Hapus
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                <Button
+                  variant="danger"
+                  className="rounded-lg px-3 py-1 text-xs"
+                  onClick={() => onDelete(row.id)}
+                  disabled={loading}
+                >
+                  Hapus
+                </Button>
+              </div>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
 
-            {tableRows.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                  Belum ada data kelas.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+{/* ===== MOBILE CARDS ===== */}
+<div className="grid gap-4 md:hidden">
+  {tableRows.map((row, idx) => {
+    const href = `/kelas/${row.id}/siswa`;
+
+    return (
+      <div
+        key={row.id}
+        className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+      >
+        <div className="mb-2 text-sm text-slate-500">
+          #{idx + 1}
+        </div>
+
+        <div className="text-lg font-extrabold">{row.name}</div>
+
+        <div className="mt-2 space-y-1 text-sm text-slate-600">
+          <div>
+            <span className="font-semibold">Wali:</span>{" "}
+            {row.waliKelasName || "-"}
+          </div>
+          <div>
+            <span className="font-semibold">Tahun:</span>{" "}
+            {row.academicYear}
+          </div>
+          <div>
+            <span className="font-semibold">Semester:</span>{" "}
+            {row.semester}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href={href}
+            className="flex-1 rounded-xl bg-emerald-600 py-2 text-center text-xs font-semibold text-white hover:bg-emerald-700"
+          >
+            Lihat Siswa
+          </Link>
+
+          <Button
+            variant="warning"
+            className="flex-1 rounded-xl py-2 text-xs"
+            onClick={() => openEdit(row)}
+            disabled={loading}
+          >
+            Edit
+          </Button>
+
+          <Button
+            variant="danger"
+            className="flex-1 rounded-xl py-2 text-xs"
+            onClick={() => onDelete(row.id)}
+            disabled={loading}
+          >
+            Hapus
+          </Button>
+        </div>
       </div>
+    );
+  })}
+
+  {tableRows.length === 0 && (
+    <div className="rounded-2xl bg-white py-12 text-center text-slate-500 shadow-sm ring-1 ring-black/5">
+      Belum ada data kelas.
+    </div>
+  )}
+</div>
+
 
       <Modal
         open={open}
